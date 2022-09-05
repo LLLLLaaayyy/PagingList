@@ -1,11 +1,15 @@
 package com.lay.paging
 
+import android.app.Activity
 import android.content.Context
+import android.util.Log
+import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.lay.paging.business.IModelProcess
 import com.lay.paging.business.IPagingList
 import com.lay.paging.business.ListMode
@@ -14,6 +18,7 @@ import com.lay.paging.model.BasePagingModel
 import com.lay.paging.ui.PagingAdapter
 import com.lay.paging.utils.DateFormatterUtils
 import com.lay.paging.utils.ScreenUtils
+import java.lang.ref.WeakReference
 
 /**
  * 作者：qinlei on 2022/8/31 10:00
@@ -23,6 +28,9 @@ class PagingList<T> : IPagingList<T>, IModelProcess<T>, LifecycleEventObserver {
     private var mTotalScroll = 0
     private var mCallback: IPagingCallback? = null
     private var currentPageIndex = ""
+    private var mActivity: WeakReference<Activity>? = null
+
+    private var isActivityHide = false
 
     //模式
     private var mode: ListMode = ListMode.DATE
@@ -37,19 +45,27 @@ class PagingList<T> : IPagingList<T>, IModelProcess<T>, LifecycleEventObserver {
     }
 
     override fun bindView(
-        context: Context,
-        lifecycleOwner: LifecycleOwner,
+        activity: AppCompatActivity,
         recyclerView: RecyclerView,
         adapter: PagingAdapter<T>,
         mode: ListMode
     ) {
+        this.mActivity = WeakReference(activity)
         this.mode = mode
         this.adapter = adapter
+        configRecyclerView(recyclerView, adapter)
+        addRecyclerListener(recyclerView)
+        activity.lifecycle.addObserver(this)
+    }
+
+    private fun configRecyclerView(recyclerView: RecyclerView, adapter: PagingAdapter<T>) {
         recyclerView.adapter = adapter
         recyclerView.layoutManager =
-            LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
-        addRecyclerListener(recyclerView)
-        lifecycleOwner.lifecycle.addObserver(this)
+            LinearLayoutManager(
+                mActivity?.get()?.baseContext,
+                LinearLayoutManager.HORIZONTAL,
+                false
+            )
     }
 
     private fun addRecyclerListener(recyclerView: RecyclerView) {
@@ -57,10 +73,12 @@ class PagingList<T> : IPagingList<T>, IModelProcess<T>, LifecycleEventObserver {
 
             override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
 
-                (recyclerView.layoutManager as LinearLayoutManager ).findFirstVisibleItemPosition()
+                (recyclerView.layoutManager as LinearLayoutManager).findFirstVisibleItemPosition()
                 super.onScrollStateChanged(recyclerView, newState)
 
                 if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+
+                    resumeLoadImage(isActivityHide)
 
                     if (!recyclerView.canScrollHorizontally(1) && currentPageIndex == "-1" && mTotalScroll > 0) {
                         //滑动到底部
@@ -78,6 +96,8 @@ class PagingList<T> : IPagingList<T>, IModelProcess<T>, LifecycleEventObserver {
                 } else {
                     //暂停刷新
                     mCallback?.scrolling()
+                    //滑动过程中暂停刷新
+                    resumeLoadImage(true)
                 }
             }
 
@@ -112,13 +132,36 @@ class PagingList<T> : IPagingList<T>, IModelProcess<T>, LifecycleEventObserver {
     }
 
     override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
-        if (event == Lifecycle.Event.ON_RESUME) {
-            //TODO 加载图片
-//            Glide.with(requireContext()).resumeRequests()
-        } else if (event == Lifecycle.Event.ON_PAUSE) {
-            //TODO 停止加载图片
-        } else if (event == Lifecycle.Event.ON_DESTROY) {
-            //TODO 页面销毁不会加载图片
+
+        mActivity?.get()?.baseContext?.let {
+            if (event == Lifecycle.Event.ON_RESUME) {
+                //TODO 加载图片
+                Log.e("Lay", "ON_RESUME 加载图片")
+                isActivityHide = false
+            } else if (event == Lifecycle.Event.ON_PAUSE) {
+                //TODO 停止加载图片
+                Log.e("Lay", "ON_PAUSE 停止加载图片")
+                isActivityHide = true
+            } else if (event == Lifecycle.Event.ON_DESTROY) {
+                //TODO 页面销毁不会加载图片
+                Log.e("Lay", "ON_DESTROY 停止加载图片")
+                isActivityHide = true
+            }
+        }
+
+    }
+
+    /**
+     * 恢复图片加载
+     */
+    private fun resumeLoadImage(isHide: Boolean) {
+        Log.e("Lay", "resumeLoadImage $isHide")
+        mActivity?.get()?.baseContext?.let {
+            if (isHide) {
+                Glide.with(it).pauseRequests()
+            } else {
+                Glide.with(it).resumeRequests()
+            }
         }
     }
 

@@ -27,7 +27,7 @@ class MainActivity : AppCompatActivity() {
         rvList = findViewById(R.id.rv_list)
         val pagingList = PagingList<String>()
         val adapter = MyAdapter()
-        pagingList.bindView(this, this, rvList, adapter, ListMode.SIMPLE)
+        pagingList.bindView(this, rvList, adapter, ListMode.SIMPLE)
         pagingList.setScrollListener(object : IPagingCallback {
             override fun scrollEnd() {
                 Log.e("MainActivity", "scrollEnd--")

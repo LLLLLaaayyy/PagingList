@@ -176,7 +176,7 @@ class PagingList<T> : IPagingList<T>, IModelProcess<T>, LifecycleEventObserver {
             ScreenUtils.getScreenWidth(recyclerView.context) / adapter?.getHolderWidth(context)!!
         totalCount += mTotalScroll / adapter?.getHolderWidth(context)!!
 
-        return (totalCount + 1)
+        return (totalCount + 1) * (adapter?.getListRowCount() ?: 1)
     }
 
     override fun getTotalCount(): Int? {

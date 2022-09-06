@@ -27,6 +27,7 @@ abstract class PagingAdapter<T> : RecyclerView.Adapter<RecyclerView.ViewHolder>(
     }
 
     abstract fun getHolderWidth(context: Context):Int
+    abstract fun getListRowCount():Int //列表行数
 
     override fun getItemCount(): Int {
         return if (datas != null) datas!!.size else 0
